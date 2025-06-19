@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: worker
+      POSTGRES_PASSWORD: worker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "db", "-U", "worker", "-d", "app"]
+      interval: 8s
+      retries: 5
+      start_period: 15s
+      timeout: 10s
+    networks:
+      - net
+
+  web:
+    build: .
+    container_name: django-app
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DJANGO_DB_HOST=db
+      - DJANGO_DB_NAME=app
+      - DJANGO_DB_USER=worker
+      - DJANGO_DB_PASS=worker
+      - DJANGO_DB_PORT=5432
+      - DJANGO_DEBUG=False
+    networks:
+      - net
+
+volumes:
+  postgres_data:
+networks:
+  net:
+    driver: bridge
